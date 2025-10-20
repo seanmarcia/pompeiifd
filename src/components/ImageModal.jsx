@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import './ImageModal.css'
 
 const ImageModal = ({ isOpen, imageSrc, imageAlt, onClose, onNext, onPrev, hasNext, hasPrev, currentIndex, totalImages }) => {
@@ -26,7 +27,7 @@ const ImageModal = ({ isOpen, imageSrc, imageAlt, onClose, onNext, onPrev, hasNe
 
   if (!isOpen) return null
 
-  return (
+  const modalContent = (
     <div className="image-modal-overlay" onClick={onClose}>
       <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
         <button className="image-modal-close" onClick={onClose} aria-label="Close">
@@ -74,6 +75,8 @@ const ImageModal = ({ isOpen, imageSrc, imageAlt, onClose, onNext, onPrev, hasNe
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
 
 export default ImageModal
