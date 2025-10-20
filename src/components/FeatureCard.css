@@ -170,10 +170,12 @@
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s;
+  cursor: pointer;
 }
 
 .photo-item img:hover {
-  transform: scale(1.05);
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .photo-placeholder {

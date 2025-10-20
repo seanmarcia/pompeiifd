@@ -1,8 +1,34 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import "./FeatureCard.css";
+import ImageModal from "./ImageModal";
 
 const FeatureCard = memo(({ feature, onNavigateToSheet }) => {
   const photoLink = import.meta.env.VITE_PHOTO_LINK || "";
+  const [modalImage, setModalImage] = useState(null);
+
+  const handleNextImage = () => {
+    if (modalImage && feature.photos && modalImage.index < feature.photos.length - 1) {
+      const nextIndex = modalImage.index + 1
+      const photo = feature.photos[nextIndex]
+      setModalImage({
+        src: `${photoLink}${photo}`,
+        alt: `Photo ${nextIndex + 1} of sheet ${feature.SHEET} - ${photo}`,
+        index: nextIndex
+      })
+    }
+  }
+
+  const handlePrevImage = () => {
+    if (modalImage && modalImage.index > 0) {
+      const prevIndex = modalImage.index - 1
+      const photo = feature.photos[prevIndex]
+      setModalImage({
+        src: `${photoLink}${photo}`,
+        alt: `Photo ${prevIndex + 1} of sheet ${feature.SHEET} - ${photo}`,
+        index: prevIndex
+      })
+    }
+  }
 
   // Helper function to format date
   const formatDate = (dateString) => {
@@ -155,6 +181,11 @@ const FeatureCard = memo(({ feature, onNavigateToSheet }) => {
                 <img
                   src={`${photoLink}${photo}`}
                   alt={`Photo ${index + 1} of sheet ${feature.SHEET}`}
+                  onClick={() => setModalImage({
+                    src: `${photoLink}${photo}`,
+                    alt: `Photo ${index + 1} of sheet ${feature.SHEET} - ${photo}`,
+                    index: index
+                  })}
                   onError={(e) => {
                     e.target.style.display = "none";
                     e.target.nextSibling.style.display = "flex";
@@ -169,6 +200,19 @@ const FeatureCard = memo(({ feature, onNavigateToSheet }) => {
           </div>
         </div>
       )}
+
+      <ImageModal
+        isOpen={!!modalImage}
+        imageSrc={modalImage?.src}
+        imageAlt={modalImage?.alt}
+        onClose={() => setModalImage(null)}
+        onNext={handleNextImage}
+        onPrev={handlePrevImage}
+        hasNext={modalImage && feature.photos && modalImage.index < feature.photos.length - 1}
+        hasPrev={modalImage && modalImage.index > 0}
+        currentIndex={modalImage?.index || 0}
+        totalImages={feature.photos?.length || 0}
+      />
 
       {/* Archive Information */}
       <div className="archive-section">
