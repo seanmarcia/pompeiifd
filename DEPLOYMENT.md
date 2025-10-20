@@ -9,6 +9,7 @@ The project uses GitHub Actions to automatically build and deploy when you push 
 ### Setup Steps:
 
 1. **Push your code to GitHub:**
+
    ```bash
    git init
    git add .
@@ -23,8 +24,8 @@ The project uses GitHub Actions to automatically build and deploy when you push 
    - Click on **Settings** > **Pages**
    - Under "Build and deployment":
      - **Source**: Select "GitHub Actions"
-   
 3. **Set Environment Variables (Important!):**
+
    - Go to **Settings** > **Secrets and variables** > **Actions**
    - Click **New repository secret**
    - Add your environment variables:
@@ -40,6 +41,7 @@ The project uses GitHub Actions to automatically build and deploy when you push 
 ### Subsequent Deployments:
 
 Simply push to the main branch:
+
 ```bash
 git add .
 git commit -m "Your changes"
@@ -57,11 +59,13 @@ If you prefer manual deployment using gh-pages:
 ### One-time Setup:
 
 1. **Install gh-pages:**
+
    ```bash
    npm install --save-dev gh-pages
    ```
 
 2. **Update vite.config.js** (already configured):
+
    - The `base` is set to `/pomp1/` for GitHub Pages
 
 3. **Initialize git and add remote:**
@@ -75,11 +79,13 @@ If you prefer manual deployment using gh-pages:
 ### Deploy:
 
 Run this command to build and deploy:
+
 ```bash
 npm run deploy
 ```
 
 This will:
+
 1. Build your project (`npm run build`)
 2. Push the `dist` folder to the `gh-pages` branch
 3. GitHub will automatically serve it
@@ -111,19 +117,25 @@ For manual deployment, they'll use the values from your local `.env` file during
 ## 🔧 Troubleshooting
 
 ### Base URL Issues
+
 If your repository name is different from `pomp1`, update `vite.config.js`:
+
 ```javascript
 base: '/YOUR_REPO_NAME/',
 ```
 
 ### 404 Errors
+
 Make sure the base path matches your repository name.
 
 ### Environment Variables Not Working
+
 - For GitHub Actions: Check that secrets are properly set in repository settings
 - For manual: Ensure `.env` file exists and has correct values
 
 ### Large File Size
+
 The `features.json` file is quite large. If GitHub has issues:
+
 - Consider using Git LFS for large files
 - Or host the JSON file separately and fetch from a CDN
