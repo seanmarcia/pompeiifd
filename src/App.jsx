@@ -32,8 +32,15 @@ function App() {
 
   useEffect(() => {
     // Load the features.json data
-    fetch("/features.json")
-      .then((response) => response.json())
+    // Use import.meta.env.BASE_URL to work with GitHub Pages
+    const baseUrl = import.meta.env.BASE_URL || '/'
+    fetch(`${baseUrl}features.json`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        return response.json()
+      })
       .then((data) => {
         // Remove duplicate sheets - keep first occurrence of each SHEET
         const seenSheets = new Set();
