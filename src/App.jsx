@@ -9,6 +9,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const itemsPerPage = 20;
 
   // Check authentication on mount
@@ -17,6 +18,14 @@ function App() {
     if (authStatus === "true") {
       setIsAuthenticated(true);
     }
+  }, []);
+
+  // Collapse the header to a slim search bar once the user scrolls down
+  useEffect(() => {
+    const onScroll = () => setIsHeaderCompact(window.scrollY > 80);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const handleLogin = () => {
@@ -166,7 +175,8 @@ function App() {
   if (loading) {
     return (
       <div className="loading">
-        <h2>Loading Pompeii Survey Data...</h2>
+        <div className="loading-spinner" />
+        <h2>Loading Pompeii Survey Data…</h2>
       </div>
     );
   }
@@ -178,29 +188,45 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="header-content">
-          <div>
-            <h1>Pompeii Food and Drink Research</h1>
-            <p className="subtitle">Archaeological Survey Data</p>
+      <header className={`app-header ${isHeaderCompact ? "compact" : ""}`}>
+        <div className="header-inner">
+          <div className="title-block">
+            <span className="title-mark" aria-hidden="true">
+              🏛️
+            </span>
+            <div>
+              <h1>Pompeii Food and Drink Research</h1>
+              <p className="subtitle">Archaeological Survey Data</p>
+            </div>
           </div>
-          <button onClick={handleLogout} className="logout-button">
-            Sign Out
-          </button>
-        </div>
-        <div className="search-container">
-          <input
-            type="text"
-            placeholder="Search by sheet, location, or description..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-          <div className="search-info">
+          <div className="search-container">
+            <div className="search-row">
+              <div className="search-field">
+                <span className="search-icon" aria-hidden="true">
+                  🔍
+                </span>
+                <label htmlFor="feature-search" className="visually-hidden">
+                  Search features
+                </label>
+                <input
+                  id="feature-search"
+                  type="search"
+                  placeholder="Search by sheet, location, or description…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+              <button onClick={handleLogout} className="logout-button">
+                Sign Out
+              </button>
+            </div>
+            <div className="search-info">
             Showing {filteredFeatures.length} unique{" "}
             {filteredFeatures.length === 1 ? "location" : "locations"}
             {features.length !== filteredFeatures.length &&
               ` (filtered from ${features.length})`}
+            </div>
           </div>
         </div>
       </header>

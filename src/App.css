@@ -1,171 +1,257 @@
-/* Global App Styles */
+/* ========================================================================
+   App shell
+   ======================================================================== */
 .app {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+  background: var(--color-bg);
 }
 
+/* --- Header (sticky, collapses on scroll) --- */
 .app-header {
-  background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
-  color: white;
-  padding: 32px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  padding: 24px 24px 20px;
   margin-bottom: 32px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
+  border-bottom: 3px solid rgba(0, 0, 0, 0.15);
+  transition: padding 0.25s ease;
 }
 
-.header-content {
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.title-block {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  gap: 20px;
+  gap: 14px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  max-height: 80px;
+  opacity: 1;
+  transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease,
+    transform 0.25s ease;
+}
+
+.title-mark {
+  font-size: 40px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
 }
 
 .app-header h1 {
-  margin: 0 0 8px 0;
-  font-size: 36px;
-  font-weight: 700;
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
 }
 
 .subtitle {
-  margin: 0;
-  font-size: 18px;
-  opacity: 0.95;
-  font-weight: 300;
+  margin: 4px 0 0;
+  font-size: 16px;
+  opacity: 0.9;
+  font-weight: 400;
+  font-family: var(--font-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .logout-button {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 2px solid white;
-  padding: 10px 24px;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  padding: 12px 20px;
+  border-radius: 999px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .logout-button:hover {
-  background: white;
-  color: #8b4513;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: #fff;
+  color: var(--color-primary);
+  transform: translateY(-1px);
 }
 
-/* Search Section */
+/* --- Compact (scrolled) header: only the search bar remains --- */
+.app-header.compact {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.app-header.compact .title-block {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+  transform: translateY(-6px);
+}
+
+.app-header.compact .search-info {
+  display: none;
+}
+
+/* --- Search --- */
 .search-container {
-  max-width: 600px;
+  max-width: 680px;
   margin: 0 auto;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-icon {
+  position: absolute;
+  left: 18px;
+  font-size: 16px;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .search-input {
   width: 100%;
-  padding: 12px 20px;
+  padding: 13px 20px 13px 46px;
   font-size: 16px;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
   border: none;
-  border-radius: 25px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
   outline: none;
-  transition: box-shadow 0.3s;
+  transition: box-shadow 0.2s;
 }
 
 .search-input:focus {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--focus-ring), var(--shadow-md);
 }
 
 .search-info {
   text-align: center;
   margin-top: 12px;
-  font-size: 14px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
   opacity: 0.9;
 }
 
-/* Features Container */
+/* ========================================================================
+   Features list
+   ======================================================================== */
 .features-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px 32px;
+  padding: 0 24px 48px;
 }
 
-/* Loading State */
+/* --- Loading --- */
 .loading {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+  background: var(--color-bg);
 }
 
 .loading h2 {
-  color: #8b4513;
-  font-size: 24px;
+  color: var(--color-primary);
+  font-size: 22px;
+  font-weight: 500;
 }
 
-/* No Results */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border-strong);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- No results --- */
 .no-results {
   text-align: center;
-  padding: 48px 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 56px 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .no-results p {
-  color: #666;
+  color: var(--color-muted);
   font-size: 18px;
   margin: 0;
 }
 
-/* Pagination Info */
+/* --- Pagination info --- */
 .pagination-info {
   text-align: center;
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 16px;
-  padding: 8px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: var(--color-muted);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  margin-bottom: 20px;
 }
 
-/* Pagination Controls */
+/* --- Pagination controls --- */
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 12px;
-  margin-top: 32px;
-  padding: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 36px;
+  padding: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   flex-wrap: wrap;
 }
 
 .pagination-btn {
-  padding: 10px 20px;
-  background: #8b4513;
-  color: white;
+  padding: 10px 18px;
+  background: var(--color-primary);
+  color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, transform 0.2s;
   white-space: nowrap;
 }
 
 .pagination-btn:hover:not(:disabled) {
-  background: #a0522d;
+  background: var(--color-accent);
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .pagination-btn:disabled {
-  background: #ccc;
+  background: var(--color-border-strong);
+  color: var(--color-faint);
   cursor: not-allowed;
-  opacity: 0.6;
 }
 
 .pagination-numbers {
@@ -179,62 +265,67 @@
   min-width: 40px;
   height: 40px;
   padding: 8px 12px;
-  background: white;
-  color: #8b4513;
-  border: 2px solid #d4a574;
-  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 
 .pagination-number:hover {
-  background: #f5f5f5;
-  border-color: #8b4513;
+  background: var(--color-bg);
+  border-color: var(--color-primary);
   transform: translateY(-1px);
 }
 
 .pagination-number.active {
-  background: #8b4513;
-  color: white;
-  border-color: #8b4513;
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
 }
 
 .pagination-ellipsis {
   display: flex;
   align-items: center;
   padding: 0 8px;
-  color: #666;
+  color: var(--color-faint);
   font-weight: 600;
 }
 
-/* Responsive Design */
+/* ========================================================================
+   Responsive
+   ======================================================================== */
 @media (max-width: 768px) {
   .app-header {
-    padding: 24px 16px;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
+    padding: 18px 16px 16px;
   }
 
   .app-header h1 {
-    font-size: 28px;
+    font-size: 22px;
+  }
+
+  .title-block {
+    max-height: 70px;
+    margin-bottom: 16px;
+  }
+
+  .title-mark {
+    font-size: 30px;
   }
 
   .subtitle {
-    font-size: 16px;
+    font-size: 12px;
   }
 
   .logout-button {
-    align-self: stretch;
-    text-align: center;
+    padding: 11px 16px;
   }
 
   .features-container {
-    padding: 0 16px 24px;
+    padding: 0 16px 32px;
   }
 
   .pagination {
@@ -243,7 +334,7 @@
   }
 
   .pagination-btn {
-    padding: 8px 16px;
+    padding: 8px 14px;
     font-size: 13px;
   }
 

@@ -7,28 +7,32 @@ const FeatureCard = memo(({ feature, onNavigateToSheet }) => {
   const [modalImage, setModalImage] = useState(null);
 
   const handleNextImage = () => {
-    if (modalImage && feature.photos && modalImage.index < feature.photos.length - 1) {
-      const nextIndex = modalImage.index + 1
-      const photo = feature.photos[nextIndex]
+    if (
+      modalImage &&
+      feature.photos &&
+      modalImage.index < feature.photos.length - 1
+    ) {
+      const nextIndex = modalImage.index + 1;
+      const photo = feature.photos[nextIndex];
       setModalImage({
         src: `${photoLink}${photo}`,
         alt: `Photo ${nextIndex + 1} of sheet ${feature.SHEET} - ${photo}`,
-        index: nextIndex
-      })
+        index: nextIndex,
+      });
     }
-  }
+  };
 
   const handlePrevImage = () => {
     if (modalImage && modalImage.index > 0) {
-      const prevIndex = modalImage.index - 1
-      const photo = feature.photos[prevIndex]
+      const prevIndex = modalImage.index - 1;
+      const photo = feature.photos[prevIndex];
       setModalImage({
         src: `${photoLink}${photo}`,
         alt: `Photo ${prevIndex + 1} of sheet ${feature.SHEET} - ${photo}`,
-        index: prevIndex
-      })
+        index: prevIndex,
+      });
     }
-  }
+  };
 
   // Helper function to format date
   const formatDate = (dateString) => {
@@ -146,7 +150,6 @@ const FeatureCard = memo(({ feature, onNavigateToSheet }) => {
           {renderField("Feature Type", feature.FEATURE_TYPE_ID)}
           {renderField("Category", feature.CATEGORY_ID)}
           {renderField("Space Type", feature.SPACE_TYPE_ID)}
-          {renderField("Gate", feature.GATE_ID)}
           {renderField("Usage", feature.USAGE_ID)}
           {renderField("Negative Feature", feature.NEGATIVE_FEATURE)}
           {renderField("Minority Report", feature.MINORITY_REPORT)}
@@ -174,18 +177,36 @@ const FeatureCard = memo(({ feature, onNavigateToSheet }) => {
       {/* Photos */}
       {feature.photos && feature.photos.length > 0 && (
         <div className="photos-section">
-          <h3>Photos</h3>
+          <h3>
+            Photos <span className="count-badge">{feature.photos.length}</span>
+          </h3>
           <div className="photos-grid">
-            {feature.photos.map((photo, index) => (
-              <div key={index} className="photo-item">
+            {feature.photos.map((photo, index) => {
+              const openModal = () =>
+                setModalImage({
+                  src: `${photoLink}${photo}`,
+                  alt: `Photo ${index + 1} of sheet ${feature.SHEET} - ${photo}`,
+                  index: index,
+                });
+              return (
+              <div
+                key={index}
+                className="photo-item"
+                role="button"
+                tabIndex={0}
+                aria-label={`View photo ${index + 1} of sheet ${feature.SHEET}`}
+                onClick={openModal}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openModal();
+                  }
+                }}
+              >
                 <img
                   src={`${photoLink}${photo}`}
                   alt={`Photo ${index + 1} of sheet ${feature.SHEET}`}
-                  onClick={() => setModalImage({
-                    src: `${photoLink}${photo}`,
-                    alt: `Photo ${index + 1} of sheet ${feature.SHEET} - ${photo}`,
-                    index: index
-                  })}
+                  loading="lazy"
                   onError={(e) => {
                     e.target.style.display = "none";
                     e.target.nextSibling.style.display = "flex";
@@ -196,7 +217,8 @@ const FeatureCard = memo(({ feature, onNavigateToSheet }) => {
                   <span className="photo-name">{photo}</span>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -208,7 +230,11 @@ const FeatureCard = memo(({ feature, onNavigateToSheet }) => {
         onClose={() => setModalImage(null)}
         onNext={handleNextImage}
         onPrev={handlePrevImage}
-        hasNext={modalImage && feature.photos && modalImage.index < feature.photos.length - 1}
+        hasNext={
+          modalImage &&
+          feature.photos &&
+          modalImage.index < feature.photos.length - 1
+        }
         hasPrev={modalImage && modalImage.index > 0}
         currentIndex={modalImage?.index || 0}
         totalImages={feature.photos?.length || 0}
