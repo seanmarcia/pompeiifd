@@ -15,7 +15,7 @@ import {
   sortFeatures,
 } from "./lib/features";
 import { regionLabel } from "./data/pompeiiMap";
-import { projectPlan } from "./lib/plan";
+import { projectPlan, projectProperties } from "./lib/plan";
 import {
   DEFAULT_STATE,
   absoluteUrlFor,
@@ -38,6 +38,7 @@ function App() {
   );
   const [features, setFeatures] = useState([]);
   const [plan, setPlan] = useState(null);
+  const [properties, setProperties] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [state, setState] = useState(() => parseHash());
@@ -111,6 +112,28 @@ function App() {
       cancelled = true;
     };
   }, [isAuthenticated]);
+
+  /*
+   * Street-address footprints are ~540 kB and only matter once someone is
+   * inside a region, so they load on the first region selection rather than up
+   * front — early enough that they are ready by the time an insula is opened.
+   */
+  const propertiesRequested = useRef(false);
+  useEffect(() => {
+    if (!plan || !state.region || propertiesRequested.current) return;
+    propertiesRequested.current = true;
+    const baseUrl = import.meta.env.BASE_URL || "/";
+
+    fetch(`${baseUrl}pompeii-properties.geojson`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((collection) => setProperties(projectProperties(collection, plan)))
+      .catch((error) => {
+        console.warn("Address footprints unavailable:", error.message);
+      });
+  }, [plan, state.region]);
 
   /* -------------------------------------------------------- derived data */
 
@@ -479,6 +502,7 @@ function App() {
           <MapView
             index={index}
             plan={plan}
+            properties={properties}
             regionKey={state.region}
             insulaKey={state.insula}
             onNavigate={handleMapNavigate}

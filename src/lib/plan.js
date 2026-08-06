@@ -68,6 +68,41 @@ function labelAnchor(rings, bbox) {
   return [cx / (3 * twiceArea), cy / (3 * twiceArea)];
 }
 
+/** Projects one feature's rings into SVG space, with bbox and label anchor. */
+function buildShape(feature, project) {
+  const rings = ringsOf(feature.geometry).map((ring) => ring.map(project));
+
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const ring of rings) {
+    for (const [x, y] of ring) {
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  const bbox = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+
+  const path = rings
+    .map(
+      (ring) =>
+        `M${ring.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join("L")}Z`
+    )
+    .join("");
+
+  return {
+    id: feature.properties.id,
+    label: feature.properties.label,
+    rings,
+    path,
+    bbox,
+    anchor: labelAnchor(rings, bbox),
+  };
+}
+
 /**
  * Projects the snapshot into SVG user units, north up, origin top-left.
  * Returns null for anything unusable so callers can fall back to the schematic.
@@ -101,45 +136,14 @@ export function projectPlan(collection) {
   const height = spanY * scale;
 
   // Latitude increases northward, SVG y increases downward — hence the flip.
+  // Kept on the returned plan so the property layer projects identically;
+  // deriving it a second time from a different extent would misalign them.
   const project = ([lon, lat]) => [
     (lon - minLon) * kx * scale,
     height - (lat - minLat) * scale,
   ];
 
-  const build = (feature) => {
-    const rings = ringsOf(feature.geometry).map((ring) => ring.map(project));
-
-    let x0 = Infinity;
-    let y0 = Infinity;
-    let x1 = -Infinity;
-    let y1 = -Infinity;
-    for (const ring of rings) {
-      for (const [x, y] of ring) {
-        if (x < x0) x0 = x;
-        if (x > x1) x1 = x;
-        if (y < y0) y0 = y;
-        if (y > y1) y1 = y;
-      }
-    }
-    const bbox = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
-
-    const path = rings
-      .map(
-        (ring) =>
-          `M${ring
-            .map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`)
-            .join("L")}Z`
-      )
-      .join("");
-
-    return {
-      id: feature.properties.id,
-      label: feature.properties.label,
-      path,
-      bbox,
-      anchor: labelAnchor(rings, bbox),
-    };
-  };
+  const build = (feature) => buildShape(feature, project);
 
   let city = null;
   const regions = new Map();
@@ -200,6 +204,7 @@ export function projectPlan(collection) {
   return {
     viewBox: { width: TARGET_WIDTH, height },
     bbox: { x: 0, y: 0, width: TARGET_WIDTH, height },
+    project,
     city,
     regions,
     insulae,
@@ -207,6 +212,67 @@ export function projectPlan(collection) {
     attribution: collection.attribution ?? "",
     retrieved: collection.source?.retrieved ?? "",
   };
+}
+
+/**
+ * Projects the property (street-address) layer using the plan's own transform.
+ *
+ * P-LOD holds more than one polygon for ~50 addresses — a property occupying
+ * separate parcels. Those are merged into a single multi-subpath shape rather
+ * than dropping either part, so the whole address stays one clickable unit.
+ */
+export function projectProperties(collection, plan) {
+  const features = collection?.features;
+  if (!Array.isArray(features) || !plan?.project) return null;
+
+  const byAddress = new Map();
+
+  for (const feature of features) {
+    if (!feature.geometry) continue;
+    const id = feature.properties?.id;
+    if (!id) continue;
+    const parts = id.split(".");
+    if (parts.length !== 3) continue;
+
+    const shape = buildShape(feature, plan.project);
+    const existing = byAddress.get(id);
+
+    if (existing) {
+      existing.path += shape.path;
+      existing.rings.push(...shape.rings);
+      const x0 = Math.min(existing.bbox.x, shape.bbox.x);
+      const y0 = Math.min(existing.bbox.y, shape.bbox.y);
+      const x1 = Math.max(
+        existing.bbox.x + existing.bbox.width,
+        shape.bbox.x + shape.bbox.width
+      );
+      const y1 = Math.max(
+        existing.bbox.y + existing.bbox.height,
+        shape.bbox.y + shape.bbox.height
+      );
+      existing.bbox = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+      existing.anchor = labelAnchor(existing.rings, existing.bbox);
+      continue;
+    }
+
+    byAddress.set(id, {
+      ...shape,
+      regionKey: parts[0],
+      insulaKey: parts[1],
+      entranceKey: parts[2],
+    });
+  }
+
+  if (byAddress.size === 0) return null;
+
+  const byInsula = new Map();
+  for (const shape of byAddress.values()) {
+    const key = `${shape.regionKey}.${shape.insulaKey}`;
+    if (!byInsula.has(key)) byInsula.set(key, []);
+    byInsula.get(key).push(shape);
+  }
+
+  return { byAddress, byInsula };
 }
 
 /** Grows a bbox to an aspect ratio and pads it, for zoom targets. */

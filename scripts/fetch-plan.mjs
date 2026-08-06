@@ -15,8 +15,9 @@
  *   r6-i12    → Insula VI.12
  *   r6-i12-p2 → VI.12.2  (a "property" is a street-door address)
  *
- * Only regions and insulae are fetched here; property-level polygons are
- * another ~1.1 MB and nothing in the UI needs them yet.
+ * Properties go to a second file, public/pompeii-properties.geojson, because
+ * they are several times larger than the plan and are only needed once someone
+ * drills into an insula — the app fetches them lazily.
  *
  * Data © the P-LOD contributors, CC-BY. Geometry originates with the Pompeii
  * Bibliography and Mapping Project (PBMP) and the Pompeii Artistic Landscape
@@ -28,23 +29,24 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const API = "https://api.p-lod.org";
-const OUT = path.join(
+const PUBLIC = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
-  "public",
-  "pompeii-plan.geojson"
+  "public"
 );
+const PLAN_OUT = path.join(PUBLIC, "pompeii-plan.geojson");
+const PROPERTIES_OUT = path.join(PUBLIC, "pompeii-properties.geojson");
 
 const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
 
-/** "r6" → "VI"; "r6-i12" → "VI.12" */
+/** "r6" → "VI"; "r6-i12" → "VI.12"; "r6-i12-p2" → "VI.12.2" */
 function idFromUrn(urn) {
   const local = urn.replace("urn:p-lod:id:", "");
-  const match = /^r(\d+)(?:-i(.+))?$/.exec(local);
+  const match = /^r(\d+)(?:-i([^-]+)(?:-p(.+))?)?$/.exec(local);
   if (!match) return null;
   const numeral = NUMERALS[Number(match[1]) - 1];
   if (!numeral) return null;
-  return match[2] ? `${numeral}.${match[2]}` : numeral;
+  return [numeral, match[2], match[3]].filter(Boolean).join(".");
 }
 
 async function get(pathname) {
@@ -108,38 +110,59 @@ for (const node of insulae) {
   features.push(toFeature("insula", id, node.label, geometry));
 }
 
-const collection = {
-  type: "FeatureCollection",
-  attribution:
-    "Pompeii Linked Open Data (P-LOD), CC-BY. Geometry from the Pompeii " +
-    "Bibliography and Mapping Project (PBMP) and the Pompeii Artistic " +
-    "Landscape Project (PALP). https://p-lod.org/",
-  source: {
-    api: API,
-    endpoints: [
-      "/geojson/pompeii",
-      "/spatial-children/pompeii",
-      "/instances-of/insula",
-    ],
-    retrieved: new Date().toISOString().slice(0, 10),
-    crs: "EPSG:4326 (WGS 84 lon/lat); source z ordinate dropped",
-  },
-  features,
-};
+// 4. every property (a street-door address), for the insula-level view
+const properties = [];
+let propertiesWithoutGeometry = 0;
+for (const node of await get("/instances-of/property")) {
+  const id = idFromUrn(node.urn);
+  const geometry = node.geojson ? JSON.parse(node.geojson).geometry : null;
+  // Ids without three parts are named sites (e.g. villa-of-the-mysteries)
+  // that sit outside the region grid and have nothing to anchor to.
+  if (!id || id.split(".").length !== 3 || !geometry) {
+    propertiesWithoutGeometry += 1;
+    continue;
+  }
+  properties.push(toFeature("property", id, node.label, geometry));
+}
 
-fs.writeFileSync(OUT, `${JSON.stringify(collection)}\n`);
+const attribution =
+  "Pompeii Linked Open Data (P-LOD), CC-BY. Geometry from the Pompeii " +
+  "Bibliography and Mapping Project (PBMP) and the Pompeii Artistic " +
+  "Landscape Project (PALP). https://p-lod.org/";
+const retrieved = new Date().toISOString().slice(0, 10);
+const crs = "EPSG:4326 (WGS 84 lon/lat); source z ordinate dropped";
 
-const counts = features.reduce((acc, f) => {
-  acc[f.properties.level] = (acc[f.properties.level] ?? 0) + 1;
-  return acc;
-}, {});
+function write(file, endpoints, featureList) {
+  const collection = {
+    type: "FeatureCollection",
+    attribution,
+    source: { api: API, endpoints, retrieved, crs },
+    features: featureList,
+  };
+  fs.writeFileSync(file, `${JSON.stringify(collection)}\n`);
 
-console.log(`Wrote ${path.relative(process.cwd(), OUT)}`);
-console.log(
-  `  ${Object.entries(counts)
-    .map(([level, n]) => `${n} ${level}`)
-    .join(", ")}  (${(fs.statSync(OUT).size / 1024).toFixed(0)} kB)`
+  const counts = featureList.reduce((acc, f) => {
+    acc[f.properties.level] = (acc[f.properties.level] ?? 0) + 1;
+    return acc;
+  }, {});
+  console.log(`Wrote ${path.relative(process.cwd(), file)}`);
+  console.log(
+    `  ${Object.entries(counts)
+      .map(([level, n]) => `${n} ${level}`)
+      .join(", ")}  (${(fs.statSync(file).size / 1024).toFixed(0)} kB)`
+  );
+}
+
+write(
+  PLAN_OUT,
+  ["/geojson/pompeii", "/spatial-children/pompeii", "/instances-of/insula"],
+  features
 );
 if (skipped.length) {
   console.log(`  no geometry for ${skipped.length}: ${skipped.join(", ")}`);
 }
+
+write(PROPERTIES_OUT, ["/instances-of/property"], properties);
+console.log(
+  `  skipped ${propertiesWithoutGeometry} without geometry or without an R.I.E address`
+);

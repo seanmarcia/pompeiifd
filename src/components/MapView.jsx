@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import "./MapView.css";
 import {
   CITY_WALL,
@@ -294,11 +295,16 @@ const STAGE_ASPECT = 8 / 5;
  */
 function SurveyedPlan({
   plan,
+  properties,
   index,
   activeRegion,
   activeInsula,
+  entranceCounts,
+  hoveredAddress,
+  onHoverAddress,
   onPickRegion,
   onPickInsula,
+  onOpenAddress,
 }) {
   const counts = useMemo(() => {
     const map = new Map();
@@ -315,8 +321,9 @@ function SurveyedPlan({
   const target = useMemo(() => {
     if (activeRegion && activeInsula) {
       const shape = plan.insulae.get(`${activeRegion}.${activeInsula}`);
-      // Generous padding keeps the surrounding blocks visible for orientation.
-      if (shape) return fitBox(shape.bbox, STAGE_ASPECT, 1.1);
+      // Enough margin to see the neighbouring blocks, but close enough that
+      // individual address footprints and their numbers stay legible.
+      if (shape) return fitBox(shape.bbox, STAGE_ASPECT, 0.35);
     }
     if (activeRegion) {
       const shape = plan.regions.get(activeRegion);
@@ -332,6 +339,13 @@ function SurveyedPlan({
 
   // Insula numbers are only legible once a single region fills the frame.
   const labelled = zoomed ? plan.insulaeByRegion.get(activeRegion) ?? [] : [];
+
+  // Address footprints are drawn only for the open insula — at region scale
+  // they would be an unreadable mosaic.
+  const addresses =
+    activeInsula && properties
+      ? properties.byInsula.get(`${activeRegion}.${activeInsula}`) ?? []
+      : [];
 
   return (
     <svg
@@ -412,6 +426,64 @@ function SurveyedPlan({
         );
       })}
 
+      {addresses.map((shape) => {
+        const count = entranceCounts?.get(shape.entranceKey) ?? 0;
+        const hovered = hoveredAddress === shape.entranceKey;
+        return (
+          <path
+            key={`prop-${shape.id}`}
+            className={`property-shape ${count ? "" : "no-records"} ${
+              hovered ? "hovered" : ""
+            }`}
+            d={shape.path}
+            role={count ? "button" : undefined}
+            tabIndex={count ? 0 : undefined}
+            aria-label={
+              count
+                ? `${shape.id}, ${plural(count, "record")}`
+                : undefined
+            }
+            onMouseEnter={() => onHoverAddress?.(shape.entranceKey)}
+            onMouseLeave={() => onHoverAddress?.(null)}
+            onFocus={() => onHoverAddress?.(shape.entranceKey)}
+            onBlur={() => onHoverAddress?.(null)}
+            onClick={count ? () => onOpenAddress?.(shape.entranceKey) : undefined}
+            onKeyDown={
+              count
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpenAddress?.(shape.entranceKey);
+                    }
+                  }
+                : undefined
+            }
+          >
+            <title>
+              {count
+                ? `${shape.id} — ${plural(count, "record")}`
+                : `${shape.id} — no survey records`}
+            </title>
+          </path>
+        );
+      })}
+
+      {addresses.map((shape) => {
+        const count = entranceCounts?.get(shape.entranceKey) ?? 0;
+        if (!count) return null;
+        return (
+          <text
+            key={`plabel-${shape.id}`}
+            className="property-numeral"
+            x={shape.anchor[0]}
+            y={shape.anchor[1]}
+            style={{ fontSize: box.width / 62 }}
+          >
+            {shape.entranceKey}
+          </text>
+        );
+      })}
+
       {!zoomed &&
         [...plan.regions.values()].map((region) => (
           <text
@@ -426,13 +498,19 @@ function SurveyedPlan({
 
       {labelled.map((shape) => {
         const count = counts.get(shape.id) ?? 0;
+        // The open insula's own number would collide with the address numbers.
+        if (addresses.length > 0 && shape.insulaKey === activeInsula) {
+          return null;
+        }
         return (
           <text
             key={`ilabel-${shape.id}`}
             className={`insula-numeral ${count ? "" : "empty"}`}
             x={shape.anchor[0]}
             y={shape.anchor[1]}
-            style={{ fontSize: Math.max(9, box.width / 44) }}
+            /* Sized from the visible span so it renders at a near-constant
+               pixel size at every zoom level. */
+            style={{ fontSize: box.width / 44 }}
           >
             {shape.insulaKey}
           </text>
@@ -656,7 +734,22 @@ function RegionPanel({ region, plan, onPickInsula, onBrowse }) {
   );
 }
 
-function InsulaPanel({ region, insula, onOpenEntrance, onBrowse }) {
+function InsulaPanel({
+  region,
+  insula,
+  properties,
+  hoveredAddress,
+  onHoverAddress,
+  onOpenEntrance,
+  onBrowse,
+}) {
+  const drawn = properties?.byAddress;
+  const undrawn = drawn
+    ? insula.entrances.filter(
+        (entrance) => !drawn.has(`${region.key}.${insula.key}.${entrance.key}`)
+      )
+    : [];
+
   return (
     <>
       <p className="panel-stat">
@@ -674,7 +767,9 @@ function InsulaPanel({ region, insula, onOpenEntrance, onBrowse }) {
       <h3 className="panel-heading">
         Entrances
         <span className="panel-hint">
-          each is one street address in Region.Insula.Entrance form
+          {drawn
+            ? "each is one street address — hover to locate it on the plan"
+            : "each is one street address in Region.Insula.Entrance form"}
         </span>
       </h3>
       <ul className="entrance-list">
@@ -682,6 +777,11 @@ function InsulaPanel({ region, insula, onOpenEntrance, onBrowse }) {
           <li key={entrance.key}>
             <button
               type="button"
+              className={
+                hoveredAddress === entrance.key ? "entrance-hovered" : ""
+              }
+              onMouseEnter={() => onHoverAddress?.(entrance.key)}
+              onMouseLeave={() => onHoverAddress?.(null)}
               onClick={() => onOpenEntrance(entrance.key)}
             >
               <span className="entrance-address">
@@ -714,6 +814,17 @@ function InsulaPanel({ region, insula, onOpenEntrance, onBrowse }) {
         ))}
       </ul>
 
+      {drawn && undrawn.length > 0 && (
+        <p className="panel-footnote">
+          {undrawn.length === insula.entrances.length
+            ? "None of these addresses"
+            : `${undrawn.length} of these addresses`}{" "}
+          {undrawn.length === 1 ? "has" : "have"} no footprint in P-LOD, so{" "}
+          {undrawn.length === 1 ? "it is" : "they are"} not outlined on the
+          plan. The records are unaffected.
+        </p>
+      )}
+
       <button type="button" className="panel-action" onClick={onBrowse}>
         Browse all {insula.count.toLocaleString()} records in {region.key}.
         {insula.key} →
@@ -727,6 +838,7 @@ function InsulaPanel({ region, insula, onOpenEntrance, onBrowse }) {
 const MapView = ({
   index,
   plan,
+  properties,
   regionKey,
   insulaKey,
   onNavigate,
@@ -734,6 +846,14 @@ const MapView = ({
 }) => {
   const region = regionKey ? index.region(regionKey) : null;
   const insula = region && insulaKey ? index.insula(regionKey, insulaKey) : null;
+
+  // Shared so the plan and the entrance list highlight the same address.
+  const [hoveredAddress, setHoveredAddress] = useState(null);
+
+  const entranceCounts = useMemo(() => {
+    if (!insula) return null;
+    return new Map(insula.entrances.map((e) => [e.key, e.count]));
+  }, [insula]);
 
   const crumbs = [
     { label: "Pompeii", onClick: () => onNavigate({ region: "", insula: "" }) },
@@ -773,12 +893,23 @@ const MapView = ({
           {plan ? (
             <SurveyedPlan
               plan={plan}
+              properties={properties}
               index={index}
               activeRegion={regionKey}
               activeInsula={insulaKey}
+              entranceCounts={entranceCounts}
+              hoveredAddress={hoveredAddress}
+              onHoverAddress={setHoveredAddress}
               onPickRegion={(key) => onNavigate({ region: key, insula: "" })}
-              onPickInsula={(region, insula) =>
-                onNavigate({ region, insula })
+              onPickInsula={(pickedRegion, pickedInsula) =>
+                onNavigate({ region: pickedRegion, insula: pickedInsula })
+              }
+              onOpenAddress={(entrance) =>
+                onOpenRecords({
+                  region: regionKey,
+                  insula: insulaKey,
+                  entrance,
+                })
               }
             />
           ) : (
@@ -843,6 +974,9 @@ const MapView = ({
             <InsulaPanel
               region={region}
               insula={insula}
+              properties={properties}
+              hoveredAddress={hoveredAddress}
+              onHoverAddress={setHoveredAddress}
               onOpenEntrance={(entranceKey) =>
                 onOpenRecords({
                   region: region.key,

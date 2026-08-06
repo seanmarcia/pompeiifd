@@ -190,6 +190,7 @@
   stroke: rgba(60, 25, 10, 0.35);
   stroke-width: 3;
   pointer-events: none;
+  vector-effect: non-scaling-stroke;
 }
 
 .region-count {
@@ -282,7 +283,8 @@
 .city-outline {
   fill: #ece0c9;
   stroke: #b09a72;
-  stroke-width: 2.5;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
   stroke-linejoin: round;
 }
 
@@ -290,7 +292,8 @@
 .region-area {
   fill: #e3d5b8;
   stroke: #bda787;
-  stroke-width: 1.6;
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
   stroke-linejoin: round;
   cursor: pointer;
   transition: fill 0.2s ease, opacity 0.3s ease;
@@ -329,7 +332,8 @@
 .insula-shape {
   fill: var(--color-primary);
   stroke: #5e2610;
-  stroke-width: 0.9;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
   stroke-linejoin: round;
   cursor: pointer;
   transition: fill-opacity 0.15s ease, opacity 0.3s ease, stroke-width 0.15s ease;
@@ -377,11 +381,60 @@
   stroke: rgba(60, 25, 10, 0.5);
   stroke-width: 2.5;
   pointer-events: none;
+  vector-effect: non-scaling-stroke;
 }
 
 .insula-numeral.empty {
   fill: #6c5b42;
   stroke: rgba(255, 253, 248, 0.8);
+}
+
+/* --- Address (property) footprints, drawn inside the open insula --- */
+.property-shape {
+  fill: #f7ead6;
+  fill-opacity: 0.9;
+  stroke: #7a4326;
+  stroke-width: 0.9;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  cursor: pointer;
+  transition: fill 0.15s ease, fill-opacity 0.15s ease;
+}
+
+.property-shape:hover,
+.property-shape.hovered {
+  fill: #f6c9a3;
+  fill-opacity: 1;
+}
+
+.property-shape:focus {
+  outline: none;
+}
+
+.property-shape:focus-visible {
+  stroke: #2c2218;
+  stroke-width: 1.6;
+}
+
+/* Addresses P-LOD has drawn but the survey never recorded. */
+.property-shape.no-records {
+  fill: #d9c9ad;
+  fill-opacity: 0.55;
+  stroke-opacity: 0.5;
+  cursor: default;
+}
+
+.property-numeral {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  fill: #5e2610;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: rgba(255, 250, 240, 0.9);
+  stroke-width: 2;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
 }
 
 /* ========================================================================
@@ -736,8 +789,13 @@
   transition: background 0.15s;
 }
 
-.entrance-list button:hover {
+.entrance-list button:hover,
+.entrance-list button.entrance-hovered {
   background: var(--color-highlight);
+}
+
+.entrance-list button.entrance-hovered {
+  box-shadow: inset 3px 0 0 var(--color-accent);
 }
 
 .entrance-address {
