@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "plan:fetch": "node scripts/fetch-plan.mjs"
   },
   "dependencies": {
     "react": "^19.1.1",

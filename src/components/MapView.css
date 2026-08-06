@@ -1,0 +1,826 @@
+/* ========================================================================
+   Map view — schematic city plan plus the drill-down panel
+   ======================================================================== */
+.map-view {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+}
+
+/* --- Breadcrumbs --- */
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crumb-sep {
+  color: var(--color-faint);
+}
+
+.crumb button {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font: inherit;
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.crumb button:hover {
+  text-decoration: underline;
+}
+
+.crumb [aria-current="page"] {
+  color: var(--color-ink);
+  font-weight: 600;
+  padding: 2px 4px;
+}
+
+/* --- Two-column layout --- */
+.map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(290px, 0.85fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.map-stage {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 12px 12px 4px;
+  position: sticky;
+  top: 96px;
+}
+
+.map-caption {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--color-faint);
+  padding: 8px 6px 10px;
+  margin: 0;
+}
+
+/* ========================================================================
+   The SVG plan
+   ======================================================================== */
+.city-plan {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--color-bg-2);
+  border-radius: var(--radius-sm);
+}
+
+.city-wall {
+  fill: #e3d5b8;
+  stroke: #b09a72;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.street {
+  fill: none;
+  stroke: #fdf8ee;
+  stroke-width: 6.5;
+  stroke-linecap: round;
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+.street-label {
+  font-size: 10.5px;
+  font-family: var(--font-sans);
+  fill: #6a5942;
+  text-anchor: middle;
+  letter-spacing: 0.05em;
+  paint-order: stroke;
+  stroke: #fdf8ee;
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+.hatch-line {
+  stroke: #b09a72;
+  stroke-width: 1.4;
+}
+
+/* --- Regions --- */
+.region {
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.region-fill {
+  fill: var(--color-primary);
+  transition: fill-opacity 0.2s ease;
+}
+
+.region-hatch {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.region-stroke {
+  fill: none;
+  stroke: #6c2c14;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  opacity: 0.55;
+  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+}
+
+.region:hover .region-fill {
+  fill-opacity: 0.92 !important;
+}
+
+.region:hover .region-stroke,
+.region:focus-visible .region-stroke {
+  stroke-width: 3.5;
+  opacity: 1;
+}
+
+.region:focus-visible {
+  outline: none;
+}
+
+.region:focus-visible .region-fill {
+  fill-opacity: 0.92 !important;
+}
+
+.region.active .region-stroke {
+  stroke-width: 3.5;
+  opacity: 1;
+}
+
+.region.dimmed,
+.region-label.dimmed {
+  opacity: 0.28;
+}
+
+.region-label {
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.region.empty {
+  cursor: default;
+}
+
+.region-numeral {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  fill: #fffaf0;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(60, 25, 10, 0.35);
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+.region-count {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  fill: #fff6e8;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(60, 25, 10, 0.35);
+  stroke-width: 2.5;
+  pointer-events: none;
+}
+
+.region-label.empty .region-numeral,
+.region-label.empty .region-count {
+  fill: #6c5b42;
+  stroke: rgba(255, 253, 248, 0.75);
+}
+
+/* --- Gates, landmarks, compass --- */
+.gate circle {
+  fill: #fffdf8;
+  stroke: #8a6f4a;
+  stroke-width: 2;
+}
+
+.gate text {
+  font-size: 10px;
+  font-family: var(--font-sans);
+  fill: #6f5c40;
+  letter-spacing: 0.02em;
+}
+
+.landmark circle {
+  fill: #2c2218;
+  opacity: 0.65;
+}
+
+.landmark text {
+  font-size: 10.5px;
+  font-family: var(--font-sans);
+  font-style: italic;
+  fill: #43372a;
+  text-anchor: middle;
+}
+
+.gate,
+.landmark {
+  pointer-events: none;
+}
+
+.compass {
+  pointer-events: none;
+}
+
+.compass path {
+  fill: none;
+  stroke: #7d6a4e;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.compass text {
+  font-size: 13px;
+  font-family: var(--font-serif);
+  fill: #7d6a4e;
+  text-anchor: middle;
+}
+
+/* Hide the fine print once zoomed in — it would render enormous. */
+.city-plan.zoomed .gate text,
+.city-plan.zoomed .landmark text,
+.city-plan.zoomed .street-label,
+.city-plan.zoomed .compass {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* ========================================================================
+   Surveyed plan — real footprints from the P-LOD snapshot
+   ======================================================================== */
+/* Must match STAGE_ASPECT in MapView.jsx. */
+.city-plan.surveyed {
+  background: var(--color-bg-2);
+  aspect-ratio: 8 / 5;
+  height: auto;
+}
+
+/* The walled circuit. */
+.city-outline {
+  fill: #ece0c9;
+  stroke: #b09a72;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+/* Region extents, including unexcavated ground. */
+.region-area {
+  fill: #e3d5b8;
+  stroke: #bda787;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  cursor: pointer;
+  transition: fill 0.2s ease, opacity 0.3s ease;
+}
+
+/* Chrome paints its default ring on focused SVG shapes; replace it with a
+   stroke so keyboard focus stays visible but in palette. */
+.region-area:focus,
+.insula-shape:focus {
+  outline: none;
+}
+
+.region-area:hover,
+.region-area:focus-visible {
+  fill: #dcccaa;
+  outline: none;
+}
+
+.region-area:focus-visible {
+  stroke: #6c2c14;
+  stroke-width: 3;
+}
+
+.insula-shape:focus-visible {
+  stroke: #2c2218;
+  stroke-width: 3;
+}
+
+.region-area.active {
+  fill: #dfd0b0;
+  stroke: #8a6f4a;
+  stroke-width: 2.2;
+}
+
+/* Individual insula footprints — the gaps between them are the streets. */
+.insula-shape {
+  fill: var(--color-primary);
+  stroke: #5e2610;
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  cursor: pointer;
+  transition: fill-opacity 0.15s ease, opacity 0.3s ease, stroke-width 0.15s ease;
+}
+
+.insula-shape:hover,
+.insula-shape:focus-visible {
+  fill-opacity: 0.96 !important;
+  stroke-width: 2.2;
+  outline: none;
+}
+
+.insula-shape.active {
+  stroke: #2c2218;
+  stroke-width: 2.6;
+  fill-opacity: 0.96 !important;
+}
+
+/* Excavated blocks with no survey records: visible, but not a target. */
+.insula-shape.empty {
+  fill: #cbb79a;
+  fill-opacity: 0.85;
+  stroke: #ab9370;
+  stroke-width: 0.7;
+  cursor: default;
+  pointer-events: none;
+}
+
+.region-area.dimmed,
+.insula-shape.dimmed {
+  opacity: 0.3;
+}
+
+.region-numeral.surveyed {
+  font-size: 30px;
+}
+
+.insula-numeral {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  fill: #fff6e8;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: rgba(60, 25, 10, 0.5);
+  stroke-width: 2.5;
+  pointer-events: none;
+}
+
+.insula-numeral.empty {
+  fill: #6c5b42;
+  stroke: rgba(255, 253, 248, 0.8);
+}
+
+/* ========================================================================
+   Drill-down panel
+   ======================================================================== */
+.map-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+
+.panel-lede {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-muted);
+  margin: 0 0 16px;
+}
+
+.panel-stat {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 0 0 16px;
+  letter-spacing: 0.02em;
+}
+
+.panel-note {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.panel-heading {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+  margin: 20px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panel-heading:first-child {
+  margin-top: 0;
+}
+
+.panel-hint {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--color-faint);
+}
+
+.panel-action {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px 16px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.panel-action:hover {
+  background: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+/* --- Structure type-ahead --- */
+.structure-finder {
+  margin-bottom: 20px;
+}
+
+.structure-finder label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.structure-finder input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.structure-finder input:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.structure-results {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.structure-results li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.structure-results button {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+.structure-results button:hover {
+  background: var(--color-highlight);
+}
+
+.structure-name {
+  font-size: 13.5px;
+  color: var(--color-ink);
+}
+
+.structure-meta {
+  font-size: 11.5px;
+  color: var(--color-faint);
+  white-space: nowrap;
+}
+
+.structure-empty {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--color-faint);
+}
+
+/* --- Region list --- */
+.region-list,
+.entrance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.region-list button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.region-list button:hover {
+  background: var(--color-highlight);
+}
+
+.region-list-id {
+  flex-shrink: 0;
+  width: 46px;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-align: center;
+}
+
+.region-list-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.region-list-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.region-list-blurb {
+  font-size: 11.5px;
+  color: var(--color-faint);
+  line-height: 1.45;
+}
+
+/* --- Suburban --- */
+.suburban-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+.suburban-card:hover {
+  background: var(--color-highlight);
+  border-color: var(--color-primary);
+}
+
+.suburban-card strong {
+  font-size: 14px;
+  color: var(--color-primary);
+}
+
+.suburban-card span {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.suburban-note {
+  font-size: 11.5px !important;
+  color: var(--color-faint) !important;
+  line-height: 1.5;
+}
+
+/* --- Insula grid --- */
+.insula-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+
+.insula-block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 1.25;
+  padding: 6px 4px;
+  border: 1.5px solid rgba(108, 44, 20, 0.35);
+  border-radius: 5px;
+  background: var(--color-bg-2);
+  overflow: hidden;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+/* Count shading as an overlay layer — avoids relative-color-syntax support gaps. */
+.insula-block::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-primary);
+  opacity: var(--fill, 0.3);
+}
+
+.insula-block:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* Insulae with no footprint on the plan — reachable here, marked as such. */
+.insula-block.unmapped {
+  border-style: dashed;
+  border-color: #b09a72;
+}
+
+.panel-footnote {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--color-faint);
+  margin: 10px 0 0;
+}
+
+.insula-key {
+  position: relative;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: #fffaf0;
+  paint-order: stroke;
+  text-shadow: 0 1px 2px rgba(50, 20, 8, 0.55);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.insula-count {
+  position: relative;
+  font-size: 10.5px;
+  color: #fff4e4;
+  text-shadow: 0 1px 2px rgba(50, 20, 8, 0.55);
+}
+
+/* --- Entrance list --- */
+.entrance-list li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.entrance-list button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "address count"
+    "body    count";
+  gap: 2px 12px;
+  width: 100%;
+  padding: 11px 10px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.entrance-list button:hover {
+  background: var(--color-highlight);
+}
+
+.entrance-address {
+  grid-area: address;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+}
+
+.entrance-body {
+  grid-area: body;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.entrance-structure {
+  font-size: 12.5px;
+  color: var(--color-ink);
+}
+
+.entrance-usage {
+  font-size: 11.5px;
+  color: var(--color-faint);
+}
+
+.entrance-count {
+  grid-area: count;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  align-self: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.entrance-photos {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--color-faint);
+  white-space: nowrap;
+}
+
+/* ========================================================================
+   Responsive
+   ======================================================================== */
+@media (max-width: 980px) {
+  .map-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .map-stage {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .map-view {
+    padding: 0 16px 32px;
+  }
+
+  .map-panel {
+    padding: 16px;
+  }
+
+  .region-numeral {
+    font-size: 34px;
+  }
+}
+
+/* On a phone the plan renders ~330px wide, so 10px SVG text becomes ~3px.
+   Drop the fine print rather than show illegible smudges. */
+@media (max-width: 700px) {
+  .gate text,
+  .landmark text,
+  .street-label,
+  .region-count,
+  .compass {
+    display: none;
+  }
+}

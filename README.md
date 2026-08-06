@@ -4,11 +4,20 @@ A React/Vite web application for browsing archaeological survey data from Pompei
 
 ## Features
 
-- 📊 Browse all archaeological survey features from Pompeii
-- 🔍 Search by sheet number, location, or description
-- 📍 Location information (Region, Insula, Entrance)
-- 📝 Detailed descriptions and relationships
-- 📷 Photo galleries with external image loading
+- 🗺️ **Map-first navigation** — the real excavated plan of Pompeii; click any
+  insula to zoom to it, then pick an individual street address
+- 🏛️ **Jump to a named structure** — type-ahead over every named building in the
+  survey (House of the Tragic Poet, Garum Shop, …)
+- 🔍 **Full-text search** across description, address, structure, usage,
+  category, space/feature type, recorder and researcher; multiple words narrow
+- 🎛️ **Faceted filters** — region → insula → entrance cascade, plus usage,
+  category, space type, feature type, sheet type, season and photos-only
+- ↕️ **Sorting** by address, sheet number, record date or photo count
+- 📋 **Scannable record list** — collapsed one-line rows that expand in place
+- 🔗 **Shareable deep links** — every view and record has a URL, and the browser
+  back button works
+- ⌨️ `/` focuses search, `Esc` clears it
+- 📷 Photo galleries with a keyboard-navigable lightbox
 - 📚 Archive information for physical records
 
 ## Setup
@@ -43,6 +52,13 @@ A React/Vite web application for browsing archaeological survey data from Pompei
    ```
 
 4. Ensure `features.json` is in the `public` folder
+
+5. `public/pompeii-plan.geojson` (the city plan) is committed, so no extra step
+   is needed. To refresh it from P-LOD:
+
+   ```bash
+   npm run plan:fetch
+   ```
 
 ### Running the Application
 
@@ -95,40 +111,157 @@ The application expects `features.json` in the `public` folder with the followin
 ]
 ```
 
+## Navigation model
+
+Records are addressed the way Pompeii itself is: **Region.Insula.Entrance**
+(e.g. `VI.3.3`). The app builds that hierarchy from the data on load and uses it
+for both the map and the filter cascade.
+
+The map uses **real excavated geometry**. `public/pompeii-plan.geojson` is a
+pinned snapshot of the walled circuit, the nine region outlines and 107 insula
+footprints, fetched from [Pompeii Linked Open Data](https://p-lod.org/) (P-LOD):
+
+```bash
+npm run plan:fetch      # re-take the snapshot (scripts/fetch-plan.mjs)
+```
+
+P-LOD's identifiers line up exactly with how this survey addresses records —
+`r6` → Region VI, `r6-i12` → Insula VI.12, `r6-i12-p2` → VI.12.2 — so no
+matching heuristics are involved. The snapshot is committed rather than fetched
+live because P-LOD warns that "data entry is ongoing and the content here will
+frequently change," and a research tool's map should not shift between page
+loads. Re-run `plan:fetch` deliberately.
+
+Insulae are drawn as their true footprints, which means the gaps between them
+read as the street grid; P-LOD has street entities but no street geometry, and
+none is needed. Region outlines include unexcavated ground — that is why
+Regions III, IV and northern V render as largely empty shapes.
+
+**Coverage.** 4,409 of the 4,588 records that carry a region and insula (96.1%)
+land on a real footprint. The gaps:
+
+| Insula | Records | Why |
+| --- | --- | --- |
+| VII.9, VI.1 | 89, 82 | Real insulae P-LOD has not yet digitised (the entity exists, its `geojson` is null) |
+| VIII.12, IV.15, IX.0, IX.4536, VI.6.8 | 8 total | Mistyped insula numbers in the survey data |
+
+Insulae with no footprint are flagged in the region panel and stay browsable
+from the list there, so nothing becomes unreachable. The 316 extramural records
+have no geometry anywhere, since they lie outside the walls.
+
+`src/data/pompeiiMap.js` keeps a hand-drawn schematic plan as a **fallback**,
+used only if the snapshot fails to load. It encodes the wall, main axes, gates
+and approximate region outlines; the caption says so when it is in use.
+
+Records whose `REGION` is not one of the nine numerals (codes `0`, `10`–`13`,
+`99`, or blank) are extramural — suburban villas and necropolis tombs. They are
+grouped under a pseudo-region, "Outside the walls", with their original codes
+shown rather than being dropped.
+
+### Attribution
+
+The plan data is CC-BY. `public/pompeii-plan.geojson` carries an `attribution`
+member, and the map caption credits P-LOD and PBMP on screen. Keep both if you
+change the map. Note that P-LOD's own repositories are inconsistent about
+licensing (`p-lod-csv` is CC0, `p-lod-data` has no LICENSE file) — worth
+confirming with the maintainers before wider redistribution.
+
+### URL state
+
+All state lives in the URL hash, so links survive a reload and work on GitHub
+Pages without rewrite rules:
+
+```
+#view=browse&region=VI&insula=3&q=oven&sort=sheet&page=2
+#sheet=6083            → opens that record, clearing filters if needed
+```
+
 ## Component Structure
 
-### App.jsx
+### `App.jsx`
 
-Main application component that:
+Loads and normalises the data, owns the URL-backed state, and switches between
+the map and record-list views.
 
-- Loads feature data from `features.json`
-- Provides search functionality
-- Renders the list of features
+### `components/MapView.jsx`
 
-### FeatureCard.jsx
+The plan plus the drill-down panel. `SurveyedPlan` draws the real geometry and
+`CityPlan` the schematic fallback; both tween the SVG `viewBox` to the selected
+region or insula, honouring `prefers-reduced-motion`. Insulae are clickable
+directly from the whole-city view, so reaching one is a single click.
 
-Individual feature display component with sections for:
+### `components/FilterBar.jsx`
 
-- **Location & Header**: Sheet number, Region, Insula, Entrance, Recorder, Researcher
-- **Details**: Structure, Sheet Type, Space, Feature Type, Category, etc.
-- **Description**: Full text description
-- **Contiguous Relationship**: Spatial relationships with other features
-- **Photos**: Image gallery (loaded from external server)
-- **Archive Information**: Physical archive references (rolls, files, etc.)
+Search, sort, the facet grid and the active-filter chips.
+
+### `components/FeatureCard.jsx`
+
+One record. Collapsed it shows address, sheet number, structure, type tags and a
+description snippet; expanded it adds details, full description, contiguous
+relationships (with clickable sheet cross-references), photos and archive data.
+
+### `lib/features.js`
+
+Pure helpers: address formatting, the region/insula/entrance index, facet
+extraction, search, filtering and sorting. Also normalises the export's leftover
+`\N` null markers.
+
+### `lib/plan.js`
+
+Projects the P-LOD snapshot into SVG user units (plate carrée with the longitude
+axis scaled by cos(latitude) — sub-metre accurate over 1.3 km), precomputing
+path strings, bounding boxes for zooming, and label anchors. Region numerals are
+anchored on the mean of the region's own insula footprints, because the regiones
+are concave enough that a polygon centroid can land inside a neighbour.
+
+### `lib/urlState.js`
+
+Parses and serialises the hash.
+
+### `scripts/fetch-plan.mjs`
+
+Takes the P-LOD snapshot. Three API calls: `/geojson/pompeii`,
+`/spatial-children/pompeii`, `/instances-of/insula`.
+
+## Data notes
+
+The survey export has a few quirks the UI handles deliberately:
+
+- 34 records have the literal string `\N` (a SQL `NULL` marker) as their
+  description; these are normalised to empty.
+- `NEGATIVE_FEATURE` and `MINORITY_REPORT` are mostly `T`/`F`, displayed as
+  Yes/No, with a badge on the row when a negative feature is flagged.
+- In `CONTIGUOUS_RELATIONSHIP`, sheet cross-references are 4-digit numbers,
+  usually parenthesised — `(6211)`. Shorter numbers are room/space numbers
+  within the structure and are deliberately **not** linked even when they
+  coincide with a sheet number. Candidates are also checked against the real
+  sheet list.
+- `STRUCTURE_ID` of `Undetermined` is treated as absent in summaries and in the
+  structure finder.
 
 ## Environment Variables
 
-| Variable          | Description               | Example                       |
-| ----------------- | ------------------------- | ----------------------------- |
-| `VITE_PHOTO_LINK` | Base URL for photo images | `https://photos.example.com/` |
+| Variable              | Description               | Example                       |
+| --------------------- | ------------------------- | ----------------------------- |
+| `VITE_PHOTO_LINK`     | Base URL for photo images | `https://photos.example.com/` |
+| `VITE_AUTH_USERNAME`  | Sign-in username          | `admin`                       |
+| `VITE_AUTH_PASSWORD`  | Sign-in password          | `pompeii2025`                 |
+
+> **Note on the sign-in gate:** the credentials are compiled into the client
+> bundle and checked in the browser, so it deters casual visitors but is not
+> access control — anyone can read them from the built JavaScript, and
+> `features.json` is served as a plain static file. Put the site behind real
+> server-side auth if the data is not meant to be public.
 
 ## Customization
 
 ### Styling
 
-- `src/App.css` - Main application styles
-- `src/components/FeatureCard.css` - Feature card styles
-- `src/index.css` - Global styles
+- `src/index.css` - Design tokens (palette, type, shadows) and global styles
+- `src/App.css` - App shell, header, pagination
+- `src/components/MapView.css` - Map plan and drill-down panel
+- `src/components/FilterBar.css` - Search, facets and chips
+- `src/components/FeatureCard.css` - Record rows and expanded detail
 
 ### Colors
 

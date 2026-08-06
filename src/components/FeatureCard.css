@@ -3,19 +3,175 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  padding: 28px;
-  margin-bottom: 24px;
-  transition: transform 0.2s, box-shadow 0.2s;
-  scroll-margin-top: 120px;
+  margin-bottom: 10px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  scroll-margin-top: 130px;
 }
 
 .feature-card:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+
+.feature-card.expanded {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+  margin-bottom: 20px;
 }
 
 .feature-card.highlight {
   animation: highlightFade 2s ease-in-out;
+}
+
+/* ========================================================================
+   Collapsed summary row
+   ======================================================================== */
+.card-summary {
+  display: flex;
+  align-items: stretch;
+}
+
+.summary-main {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: 4px 18px;
+  flex: 1;
+  min-width: 0;
+  padding: 14px 8px 14px 18px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  text-align: left;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+.summary-address-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.summary-address {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.summary-sheet {
+  font-size: 11.5px;
+  color: var(--color-faint);
+  letter-spacing: 0.03em;
+}
+
+.summary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.summary-structure {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.summary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.summary-tag {
+  background: var(--color-bg-2);
+  color: var(--color-muted);
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.summary-flag {
+  align-self: flex-start;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #f3e0d4;
+  color: #8a3b1e;
+  border: 1px solid #dfbda6;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.summary-snippet {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.summary-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: start;
+  padding-top: 3px;
+  white-space: nowrap;
+}
+
+.summary-photos,
+.summary-season {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-faint);
+}
+
+.summary-chevron {
+  font-size: 13px;
+  color: var(--color-primary);
+}
+
+.summary-copy {
+  flex-shrink: 0;
+  align-self: stretch;
+  padding: 0 14px;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-faint);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.summary-copy:hover {
+  background: var(--color-highlight);
+  color: var(--color-primary);
+}
+
+/* ========================================================================
+   Expanded detail
+   ======================================================================== */
+.card-body {
+  padding: 4px 24px 24px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 2px;
+}
+
+.card-body > .meta-info {
+  padding: 16px 0 18px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 @keyframes highlightFade {
@@ -28,44 +184,6 @@
     background: var(--color-surface);
     box-shadow: var(--shadow-sm);
   }
-}
-
-/* --- Header --- */
-.card-header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: 18px;
-  margin-bottom: 20px;
-}
-
-.location-info {
-  min-width: 0;
-}
-
-.sheet-number {
-  font-size: 27px;
-  color: var(--color-primary);
-  margin: 0 0 10px;
-  font-weight: 600;
-}
-
-.location-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.location-tag {
-  background: var(--color-tag);
-  color: var(--color-tag-ink);
-  padding: 4px 13px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
 .meta-info {
@@ -223,13 +341,30 @@
   word-break: break-all;
 }
 
-/* --- Archive --- */
+/* --- Archive (collapsed by default — rarely the reason to open a record) --- */
 .archive-section {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  padding: 18px 20px;
+  padding: 12px 20px;
   border-radius: var(--radius-sm);
   margin-top: 22px;
+}
+
+.archive-section > summary {
+  cursor: pointer;
+  color: var(--color-primary);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  list-style-position: outside;
+}
+
+.archive-section[open] > summary {
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .video-comments {
@@ -246,12 +381,41 @@
 
 /* --- Responsive --- */
 @media (max-width: 768px) {
-  .feature-card {
-    padding: 18px;
+  /* Stack the summary row: address, then body, with the chevron alongside. */
+  .summary-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "address side"
+      "body    body";
+    gap: 8px 12px;
+    padding: 13px 8px 14px 14px;
   }
 
-  .sheet-number {
-    font-size: 23px;
+  .summary-address-block {
+    grid-area: address;
+  }
+
+  .summary-body {
+    grid-area: body;
+  }
+
+  .summary-side {
+    grid-area: side;
+  }
+
+  .summary-address {
+    font-size: 18px;
+  }
+
+  .card-body {
+    padding: 4px 16px 18px;
+  }
+
+  /* Don't let the copy button stretch the full card height on a narrow screen. */
+  .summary-copy {
+    align-self: flex-start;
+    padding: 14px 12px;
+    border-left: none;
   }
 
   .details-grid,
