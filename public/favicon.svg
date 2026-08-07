@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pompeii Food and Drink Research">
+  <title>Pompeii Food and Drink Research</title>
+  <!--
+    A thermopolium counter seen in plan: the L-shaped masonry serving counter
+    with its dolia (sunken storage jars) — the emblem of Pompeian food and
+    drink, and a top-down view to match the app's map-first navigation.
+    Colours are the app's Pompeian red and parchment (see src/index.css).
+  -->
+  <rect width="64" height="64" rx="14" fill="#8a3b1e"/>
+  <path d="M11 16 H53 V34 H29 V53 H11 Z" fill="#f6e9d2"/>
+  <g fill="#8a3b1e">
+    <circle cx="20.5" cy="25" r="5.2"/>
+    <circle cx="32" cy="25" r="5.2"/>
+    <circle cx="43.5" cy="25" r="5.2"/>
+    <circle cx="20" cy="43.5" r="5.2"/>
+  </g>
+</svg>
