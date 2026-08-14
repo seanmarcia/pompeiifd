@@ -5,7 +5,8 @@ A React/Vite web application for browsing archaeological survey data from Pompei
 ## Features
 
 - 🗺️ **Map-first navigation** — the real excavated plan of Pompeii; click any
-  insula to zoom to it, then pick an individual street address
+  insula to zoom to it, then pick an individual street address from its
+  actual footprint on the plan
 - 🏛️ **Jump to a named structure** — type-ahead over every named building in the
   survey (House of the Tragic Poet, Garum Shop, …)
 - 🔍 **Full-text search** across description, address, structure, usage,
@@ -53,8 +54,8 @@ A React/Vite web application for browsing archaeological survey data from Pompei
 
 4. Ensure `features.json` is in the `public` folder
 
-5. `public/pompeii-plan.geojson` (the city plan) is committed, so no extra step
-   is needed. To refresh it from P-LOD:
+5. `public/pompeii-plan.geojson` and `public/pompeii-properties.geojson` are
+   committed, so no extra step is needed. To refresh them from P-LOD:
 
    ```bash
    npm run plan:fetch
@@ -137,17 +138,28 @@ read as the street grid; P-LOD has street entities but no street geometry, and
 none is needed. Region outlines include unexcavated ground — that is why
 Regions III, IV and northern V render as largely empty shapes.
 
-**Coverage.** 4,409 of the 4,588 records that carry a region and insula (96.1%)
-land on a real footprint. The gaps:
+A second file, `public/pompeii-properties.geojson` (539 kB, 81 kB gzipped),
+holds 1,161 **property** footprints — individual street addresses. It is fetched
+lazily, on the first region selection, so the city view never pays for it.
+Opening an insula outlines each address inside it; hovering links the plan to
+the entrance list in both directions, and clicking one opens its records.
 
-| Insula | Records | Why |
+**Coverage.** Measure geometry, not entities: many P-LOD ids exist with a null
+`geojson`, so an entity count overstates what can actually be drawn.
+
+| Level | Our addresses drawn | Records on a real footprint |
 | --- | --- | --- |
-| VII.9, VI.1 | 89, 82 | Real insulae P-LOD has not yet digitised (the entity exists, its `geojson` is null) |
-| VIII.12, IV.15, IX.0, IX.4536, VI.6.8 | 8 total | Mistyped insula numbers in the survey data |
+| Insula | 89 / 96 | 4,409 / 4,588 — 96.1% |
+| Property | 530 / 771 | 3,347 / 4,581 — 73.1% |
 
-Insulae with no footprint are flagged in the region panel and stay browsable
-from the list there, so nothing becomes unreachable. The 316 extramural records
-have no geometry anywhere, since they lie outside the walls.
+The insula-level gaps are `VII.9` (89 records) and `VI.1` (82) — real insulae
+P-LOD has not yet digitised — plus 8 records under mistyped insula numbers
+(`VIII.12`, `IV.15`, `IX.0`, `IX.4536`, `VI.6.8`).
+
+Nothing becomes unreachable. Insulae and addresses without a footprint are
+flagged in the panel, footnoted, and still browsable from the lists there. The
+316 extramural records have no geometry anywhere, since they lie outside the
+walls — P-LOD has a `villa-of-the-mysteries` entity but no polygon for it.
 
 `src/data/pompeiiMap.js` keeps a hand-drawn schematic plan as a **fallback**,
 used only if the snapshot fails to load. It encodes the wall, main axes, gates
@@ -208,11 +220,20 @@ extraction, search, filtering and sorting. Also normalises the export's leftover
 
 ### `lib/plan.js`
 
-Projects the P-LOD snapshot into SVG user units (plate carrée with the longitude
+`projectPlan` projects the P-LOD snapshot into SVG user units (plate carrée with the longitude
 axis scaled by cos(latitude) — sub-metre accurate over 1.3 km), precomputing
 path strings, bounding boxes for zooming, and label anchors. Region numerals are
 anchored on the mean of the region's own insula footprints, because the regiones
 are concave enough that a polygon centroid can land inside a neighbour.
+
+`projectProperties` reuses that same transform for the address layer — deriving
+a second projection from the properties' own extent would misalign the two.
+About 50 addresses have more than one polygon (a property on separate parcels);
+those are merged into one multi-subpath shape rather than dropping a part.
+
+Labels and stroke widths are scaled from the visible span (or use
+`vector-effect: non-scaling-stroke`) so they hold a constant on-screen size from
+whole-city down to a single doorway.
 
 ### `lib/urlState.js`
 
@@ -220,8 +241,9 @@ Parses and serialises the hash.
 
 ### `scripts/fetch-plan.mjs`
 
-Takes the P-LOD snapshot. Three API calls: `/geojson/pompeii`,
-`/spatial-children/pompeii`, `/instances-of/insula`.
+Takes the P-LOD snapshot. Four API calls: `/geojson/pompeii`,
+`/spatial-children/pompeii`, `/instances-of/insula`, `/instances-of/property`.
+Writes `pompeii-plan.geojson` and `pompeii-properties.geojson`.
 
 ## Data notes
 
@@ -262,6 +284,18 @@ The survey export has a few quirks the UI handles deliberately:
 - `src/components/MapView.css` - Map plan and drill-down panel
 - `src/components/FilterBar.css` - Search, facets and chips
 - `src/components/FeatureCard.css` - Record rows and expanded detail
+
+### Icons
+
+`public/favicon.svg` is the source of truth — a thermopolium counter drawn in
+plan, with its dolia (the sunken storage jars), in the app's Pompeian red and
+parchment. A plan view rather than a perspective one, to match the map.
+
+`favicon.ico` (16/32/48), `favicon-96.png` and `apple-touch-icon.png` are
+rasterised from it and committed. If you change the SVG, re-render them at those
+sizes with any tool; the touch icon is deliberately full-bleed square with the
+motif inset, because iOS applies its own rounded mask and would otherwise round
+the corners twice.
 
 ### Colors
 

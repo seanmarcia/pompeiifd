@@ -9,6 +9,14 @@ function flagLabel(value) {
   return value;
 }
 
+/** Candidate sheet cross-references: any run of four or more digits. */
+const SHEET_REF = /\d{4,}/g;
+
+/** "FS6620" — the recorders' own marker for a sheet reference. */
+const FS_PREFIX = /(?:^|[^A-Za-z])FS$/;
+
+const isWordChar = (char) => char !== undefined && /[0-9A-Za-z]/.test(char);
+
 /** Trimmed first sentence(s) of the description, for the collapsed row. */
 function snippet(text, limit = 190) {
   if (!text) return "";
@@ -90,53 +98,61 @@ const FeatureCard = memo(
     /**
      * Renders sheet cross-references in the relationship text as links.
      *
-     * Recorders wrote sheet references as 4-digit numbers, usually in
-     * parentheses — "(6211)". Shorter numbers in this text are room and space
-     * numbers within the structure, so they must NOT be linked even when they
-     * happen to coincide with a sheet number. Candidates are additionally
-     * checked against the real sheet list, which drops the ~38 four-digit
-     * numbers that are measurements rather than references.
+     * Recorders wrote sheet references as 4-digit numbers, but punctuated them
+     * a dozen different ways — "(6211)", "#6211", "[6211]", "6211;",
+     * "(3219 and 3218)", "(3212,3213, 3214, and 3215)", "room 14-3934". So
+     * rather than enumerating the wrappers, we take every run of 4+ digits
+     * that stands alone as a token and check it against the real sheet list;
+     * that list is what drops the ~39 four-digit numbers that are
+     * measurements rather than references.
+     *
+     * Two constraints hold this in place:
+     *
+     * - Shorter numbers in this text are room and space numbers within the
+     *   structure, so they must NOT be linked even when they coincide with a
+     *   sheet number — hence the 4-digit floor.
+     * - A digit run touching a letter or digit is part of a larger token, not
+     *   a bare sheet number. "dolium 6898A" and "3061q" are composite
+     *   identifiers, so they stay plain text. "FS6620" is the one exception:
+     *   FS ("feature sheet") is the recorders' own marker for a reference,
+     *   written elsewhere as "FS #1286".
      */
     const renderContiguousRelationship = (text) => {
       if (!text) return null;
 
       const parts = [];
       let lastIndex = 0;
-      const regex = /(\((\d{4,})\)|(?:^|\s)(\d{4,})(?=\s|,|\.|$))/g;
-      let match;
 
-      while ((match = regex.exec(text)) !== null) {
-        const sheetNumber = match[2] || match[3];
+      for (const match of text.matchAll(SHEET_REF)) {
+        const sheetNumber = match[0];
+        const start = match.index;
+        const end = start + sheetNumber.length;
+
+        if (isWordChar(text[end])) continue;
+        if (isWordChar(text[start - 1]) && !FS_PREFIX.test(text.slice(0, start)))
+          continue;
 
         // Not a sheet in this dataset — leave the number as plain text.
         if (isKnownSheet && !isKnownSheet(sheetNumber)) continue;
 
-        if (match.index > lastIndex) {
-          parts.push(text.substring(lastIndex, match.index));
-        }
-
-        const fullMatch = match[0];
-        const leadingSpace =
-          fullMatch.startsWith(" ") && !fullMatch.startsWith("(") ? " " : "";
-
-        if (leadingSpace) parts.push(leadingSpace);
+        if (start > lastIndex) parts.push(text.substring(lastIndex, start));
 
         parts.push(
           <a
-            key={`sheet-${match.index}`}
+            key={`sheet-${start}`}
             href={`#sheet=${sheetNumber}`}
             className="sheet-link"
-            title={`Go to sheet ${sheetNumber}`}
+            aria-label={`Go to sheet ${sheetNumber}`}
             onClick={(e) => {
               e.preventDefault();
               onNavigateToSheet?.(sheetNumber);
             }}
           >
-            {fullMatch.includes("(") ? `(${sheetNumber})` : sheetNumber}
+            {sheetNumber}
           </a>
         );
 
-        lastIndex = regex.lastIndex;
+        lastIndex = end;
       }
 
       if (lastIndex < text.length) parts.push(text.substring(lastIndex));
