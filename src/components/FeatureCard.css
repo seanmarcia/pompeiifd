@@ -82,6 +82,42 @@
   color: var(--color-ink);
 }
 
+/* --- Values filled from sibling records, never presented as recorded --- */
+.summary-structure.inferred {
+  font-style: italic;
+  font-weight: 500;
+}
+
+.inferred-mark,
+.summary-tag.inferred {
+  color: var(--color-muted);
+}
+
+.inferred-mark {
+  margin-left: 2px;
+  font-style: normal;
+}
+
+.summary-tag.inferred {
+  background: none;
+  border: 1px dashed var(--color-border-strong);
+  font-style: italic;
+  /* Match the padding of a solid tag, less the border we just added. */
+  padding: 1px 8px;
+}
+
+.field-value.inferred {
+  font-style: italic;
+}
+
+.field-note {
+  display: block;
+  margin-top: 1px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
 .summary-tags {
   display: flex;
   flex-wrap: wrap;

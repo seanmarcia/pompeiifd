@@ -96,6 +96,30 @@ const FeatureCard = memo(
     };
 
     /**
+     * A shared field, preferring what this sheet recorded and falling back to
+     * the other records at the same address. The fallback always discloses
+     * itself — and quotes what the sheet actually said, so an "Undetermined"
+     * keeps showing rather than being quietly replaced.
+     */
+    const renderResolvedField = (label, field) => {
+      const guess = feature._inferred?.[field];
+      if (!guess) return renderField(label, feature[field]);
+      return (
+        <div className="field">
+          <span className="field-label">{label}:</span>
+          <span className="field-value inferred">
+            {guess}
+            <span className="field-note">
+              {feature[field]
+                ? `sheet says “${feature[field]}” — value from other records at ${feature._address}`
+                : `not on this sheet — from other records at ${feature._address}`}
+            </span>
+          </span>
+        </div>
+      );
+    };
+
+    /**
      * Renders sheet cross-references in the relationship text as links.
      *
      * Recorders wrote sheet references as 4-digit numbers, but punctuated them
@@ -172,18 +196,22 @@ const FeatureCard = memo(
       }
     };
 
-    const summaryTags = [
-      feature.SHEET_TYPE_ID,
-      feature.USAGE_ID,
-      feature.SPACE_TYPE_ID,
-      feature.FEATURE_TYPE_ID,
-    ].filter(Boolean);
-
     // "Undetermined" is a placeholder, not a name — it only adds noise here.
-    const structureName =
+    const recordedStructure =
       feature.STRUCTURE_ID && feature.STRUCTURE_ID !== "Undetermined"
         ? feature.STRUCTURE_ID
         : null;
+    const structureName = recordedStructure ?? feature._inferred?.STRUCTURE_ID;
+    const structureInferred = !recordedStructure && Boolean(structureName);
+
+    const usage = feature.USAGE_ID ?? feature._inferred?.USAGE_ID;
+
+    const summaryTags = [
+      { label: feature.SHEET_TYPE_ID },
+      { label: usage, inferred: !feature.USAGE_ID && Boolean(usage) },
+      { label: feature._spaceType },
+      { label: feature.FEATURE_TYPE_ID },
+    ].filter((tag) => Boolean(tag.label));
 
     return (
       <article
@@ -208,7 +236,25 @@ const FeatureCard = memo(
 
             <span className="summary-body">
               {structureName && (
-                <span className="summary-structure">{structureName}</span>
+                <span
+                  className={`summary-structure ${
+                    structureInferred ? "inferred" : ""
+                  }`}
+                >
+                  {structureName}
+                  {structureInferred && (
+                    <span
+                      className="inferred-mark"
+                      title={`Not recorded on this sheet — taken from other records at ${feature._address}`}
+                    >
+                      <span aria-hidden="true">*</span>
+                      <span className="visually-hidden">
+                        (not recorded on this sheet; taken from other records at{" "}
+                        {feature._address})
+                      </span>
+                    </span>
+                  )}
+                </span>
               )}
               {feature.NEGATIVE_FEATURE === "T" && (
                 <span className="summary-flag">Negative feature</span>
@@ -216,8 +262,19 @@ const FeatureCard = memo(
               {summaryTags.length > 0 && (
                 <span className="summary-tags">
                   {summaryTags.map((tag, i) => (
-                    <span key={`${tag}-${i}`} className="summary-tag">
-                      {tag}
+                    <span
+                      key={`${tag.label}-${i}`}
+                      className={`summary-tag ${tag.inferred ? "inferred" : ""}`}
+                    >
+                      {tag.label}
+                      {tag.inferred && (
+                        <>
+                          <span aria-hidden="true">*</span>
+                          <span className="visually-hidden">
+                            (not recorded on this sheet)
+                          </span>
+                        </>
+                      )}
                     </span>
                   ))}
                 </span>
@@ -265,13 +322,13 @@ const FeatureCard = memo(
             <div className="details-section">
               <h3>Details</h3>
               <div className="details-grid">
-                {renderField("Structure", feature.STRUCTURE_ID)}
+                {renderResolvedField("Structure", "STRUCTURE_ID")}
                 {renderField("Sheet Type", feature.SHEET_TYPE_ID)}
                 {renderField("Space", feature.SPACE_NUMBER)}
                 {renderField("Feature Type", feature.FEATURE_TYPE_ID)}
-                {renderField("Category", feature.CATEGORY_ID)}
+                {renderResolvedField("Category", "CATEGORY_ID")}
                 {renderField("Space Type", feature.SPACE_TYPE_ID)}
-                {renderField("Usage", feature.USAGE_ID)}
+                {renderResolvedField("Usage", "USAGE_ID")}
                 {renderField(
                   "Negative Feature",
                   flagLabel(feature.NEGATIVE_FEATURE)

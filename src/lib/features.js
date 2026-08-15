@@ -243,9 +243,88 @@ function clean(feature) {
   return out;
 }
 
+/** "Undetermined" is a placeholder the recorders typed, not a value. */
+const isMeaningful = (value) => Boolean(value) && value !== "Undetermined";
+
+/**
+ * Fields that describe the *property* rather than the individual feature, so
+ * a blank one can be filled from a sibling record at the same address: every
+ * record at VI.2.6 sits in the House of Sallust whether or not the recorder
+ * wrote it down.
+ *
+ * Per-feature fields are deliberately excluded. SPACE_TYPE_ID and
+ * FEATURE_TYPE_ID describe the thing on the sheet — an oven and a cistern at
+ * one address are genuinely different — so copying between siblings would
+ * invent data rather than recover it.
+ */
+const ADDRESS_FIELDS = ["STRUCTURE_ID", "CATEGORY_ID", "USAGE_ID"];
+
+/**
+ * Full Region.Insula.Entrance key, or null when any part is missing.
+ *
+ * Unlike addressOf() this refuses to fall back to a shorter key: a record
+ * with no entrance would otherwise group under "VI.2" and inherit a structure
+ * name from the whole insula, which is a different building.
+ */
+function addressKeyOf(feature) {
+  const parts = [feature.REGION, feature.INSULA, feature.ENTRANCE].map((v) =>
+    v == null ? "" : String(v).trim()
+  );
+  return parts.every((p) => p !== "") ? parts.join(".") : null;
+}
+
+/**
+ * Per-address agreement on the shared fields above.
+ *
+ * Seasons 2011–2014 left STRUCTURE_ID, CATEGORY_ID and USAGE_ID empty on
+ * every sheet — 1,279 records — so the surrounding seasons are the only
+ * record of what those properties were. Only a *unanimous* address may fill a
+ * blank; where recorders disagree ("Shop of Acisculus" vs "House of
+ * Acisculis") the field stays empty rather than picking a winner.
+ */
+function addressConsensus(features) {
+  const seen = new Map();
+  for (const feature of features) {
+    const address = addressKeyOf(feature);
+    if (!address) continue;
+    let entry = seen.get(address);
+    if (!entry) {
+      entry = Object.fromEntries(ADDRESS_FIELDS.map((f) => [f, new Set()]));
+      seen.set(address, entry);
+    }
+    for (const field of ADDRESS_FIELDS) {
+      if (isMeaningful(feature[field])) entry[field].add(feature[field]);
+    }
+  }
+
+  const agreed = new Map();
+  for (const [address, entry] of seen) {
+    const values = {};
+    for (const field of ADDRESS_FIELDS) {
+      if (entry[field].size === 1) values[field] = [...entry[field]][0];
+    }
+    agreed.set(address, values);
+  }
+  return agreed;
+}
+
+/**
+ * Space-type terms the survey actually uses, harvested from the records that
+ * filled SPACE_TYPE_ID. SPACE_NUMBER holds a mix of these terms and bare room
+ * numbers ("Preparation room" but also "12"), so this vocabulary is what
+ * tells the two apart.
+ */
+function spaceTypeVocabulary(features) {
+  const vocabulary = new Set();
+  for (const feature of features) {
+    if (isMeaningful(feature.SPACE_TYPE_ID)) vocabulary.add(feature.SPACE_TYPE_ID);
+  }
+  return vocabulary;
+}
+
 /** Attaches the derived fields the UI reads on every render. */
 export function decorate(rawFeatures) {
-  return rawFeatures.map((raw) => {
+  const features = rawFeatures.map((raw) => {
     const feature = clean(raw);
     const haystack = SEARCH_FIELDS.map((f) => feature[f] ?? "")
       .join(" ")
@@ -258,6 +337,39 @@ export function decorate(rawFeatures) {
       _entranceKey: key(feature.ENTRANCE),
       _photoCount: feature.photos?.length ?? 0,
       _search: `${haystack} ${addressOf(feature).toLowerCase()}`,
+    };
+  });
+
+  // Second pass: the gap-filling below needs every record in hand.
+  const consensus = addressConsensus(features);
+  const vocabulary = spaceTypeVocabulary(features);
+
+  return features.map((feature) => {
+    const shared = consensus.get(addressKeyOf(feature));
+
+    // Only ever fills a blank — a value the recorder wrote always wins.
+    const inferred = {};
+    if (shared) {
+      for (const field of ADDRESS_FIELDS) {
+        if (!isMeaningful(feature[field]) && shared[field]) {
+          inferred[field] = shared[field];
+        }
+      }
+    }
+
+    // Not inference: the record's own SPACE_NUMBER, shown as the space type
+    // when the dedicated field is empty and the value is a known term.
+    const spaceType = isMeaningful(feature.SPACE_TYPE_ID)
+      ? feature.SPACE_TYPE_ID
+      : vocabulary.has(feature.SPACE_NUMBER)
+        ? feature.SPACE_NUMBER
+        : null;
+
+    return {
+      ...feature,
+      _inferred: inferred,
+      _spaceType: spaceType,
+      _spaceTypeFromNumber: Boolean(spaceType) && !isMeaningful(feature.SPACE_TYPE_ID),
     };
   });
 }
